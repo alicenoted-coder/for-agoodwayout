@@ -1,7 +1,11 @@
-"""Regenerate the file table in chat-exports/INDEX.md.
+"""Regenerate the file table in INDEX.md.
 
-Scans chat-exports/*.txt, fills in each file's date range and message
-count, and keeps the hand-written 用途／產出 column of existing rows.
+Exports live next to INDEX.md: the project root if it has an INDEX.md,
+otherwise chat-exports/. Exports that don't follow the naming rule yet
+(e.g. LINE's default "[LINE]出走女子大群.txt") are renamed to
+agoodwayout_YYYY-MM-DD.txt using the file's modified date. Each file's
+date range and message count are filled in; the hand-written 用途／產出
+column of existing rows is kept.
 
 Usage: python3 tools/update_index.py
 """
@@ -12,8 +16,9 @@ from pathlib import Path
 from line_chat import member_messages, parse
 
 ROOT = Path(__file__).resolve().parent.parent
-EXPORTS = ROOT / "chat-exports"
+EXPORTS = ROOT if (ROOT / "INDEX.md").exists() else ROOT / "chat-exports"
 INDEX = EXPORTS / "INDEX.md"
+NAME_RE = re.compile(r"^agoodwayout_\d{4}-\d{2}-\d{2}\.txt$")
 START, END = "<!-- INDEX:START -->", "<!-- INDEX:END -->"
 HEADER = ("| 檔名 | 訊息起 | 訊息迄 | 涵蓋天數 | 成員訊息數 | 比上一份新增 | 用途／產出 |\n"
           "|---|---|---|---:|---:|---|---|")
@@ -29,7 +34,22 @@ def existing_notes(table):
     return notes
 
 
+def rename_new_exports():
+    """Give exports that still have LINE's default name a dated name."""
+    for path in sorted(EXPORTS.glob("*.txt")):
+        if NAME_RE.match(path.name) or not parse(path):
+            continue
+        day = datetime.date.fromtimestamp(path.stat().st_mtime).isoformat()
+        target = EXPORTS / f"agoodwayout_{day}.txt"
+        if target.exists():
+            print(f"沒有改名（{target.name} 已經存在）：{path.name}")
+            continue
+        path.rename(target)
+        print(f"已改名：{path.name} → {target.name}")
+
+
 def main():
+    rename_new_exports()
     text = INDEX.read_text(encoding="utf-8")
     before, rest = text.split(START, 1)
     table, after = rest.split(END, 1)
