@@ -37,12 +37,21 @@
 
 | 表 | 內容 | 公開？ |
 |---|---|---|
-| `members` | LINE 內部 ID、LINE 顯示名稱、社群暱稱、是否為管理員 | 否（只有後端讀得到） |
+| `members` | LINE 內部 ID、LINE 顯示名稱、社群暱稱、是否為管理員 | 只開放 `id`、`nickname` 兩欄（欄位權限＋RLS）；其他欄只有後端讀得到 |
 | `activities` | 類別、名稱、日期、地點、費用、名額、開班門檻 | 開放中的活動公開 |
-| `signups` | 哪個社員、哪場活動、接龍時間、取消時間 | 否；公開名單透過 `public_signups` 只露出暱稱 |
+| `signups` | 哪個社員、哪場活動、接龍時間、取消時間 | 只讀得到有效接龍；公開名單用 `public_signups` 只露出暱稱 |
 
 - `join_activity()`：鎖住活動那一列再檢查名額，避免兩人同時搶到最後一位。只有後端能呼叫。
-- 2026-11-15 已在本機 PostgreSQL 16 模擬 Supabase 預設權限測過：重複接龍、額滿、訪客讀不到 LINE ID、訪客無法直接寫入，皆正確。
+- 2026-11-15 已在本機 PostgreSQL 16 模擬 Supabase 預設權限測過：重複接龍、額滿、取消後遞補、訪客讀不到 LINE ID、訪客無法直接寫入，皆正確。
+- 已套用到 Supabase 專案；Supabase 安全檢查（Security Advisor）無警告。
+
+## 服務與公開設定值
+
+| 服務 | 值 |
+|---|---|
+| Supabase 專案 | `agoodwayout`，URL `https://qceomzxgeqromtbdxinf.supabase.co`（組織 `alicenoted-job`，東京） |
+| GitHub Pages | 從 `claude/dazzling-bell-q1quxi` 分支根目錄發布：`https://alicenoted-coder.github.io/for-agoodwayout/` |
+| LINE Login channel / LIFF | 尚未建立 |
 
 ## 目錄
 
@@ -56,7 +65,7 @@
 
 - [x] 介面原型（完整版、第一階段、第一階段＋日曆）
 - [x] 資料表設計與本機測試
-- [ ] 建立 Supabase 專案 `agoodwayout`（東京）並套用資料表
+- [x] 建立 Supabase 專案 `agoodwayout`（東京，ref `qceomzxgeqromtbdxinf`）並套用資料表
 - [ ] 開啟 GitHub Pages
 - [ ] 建立 LINE Login channel＋LIFF app（需確認官方帳號所屬的 Provider）
 - [ ] Edge Function：驗證 LINE 身分、設定暱稱、接龍、取消
