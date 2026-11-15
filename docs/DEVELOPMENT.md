@@ -72,13 +72,14 @@
 - [x] 介面原型（完整版、第一階段、第一階段＋日曆）
 - [x] 資料表設計與本機測試
 - [x] 建立 Supabase 專案 `agoodwayout`（東京，ref `qceomzxgeqromtbdxinf`）並套用資料表
-- [ ] 開啟 GitHub Pages
 - [x] 建立 LINE Login channel＋LIFF app（測試用 Provider）
 - [x] Edge Function：驗證 LINE 身分、設定暱稱、接龍、管理員（新增／編輯／刪除活動、看名單、移除接龍）
 - [x] 把原型接上資料庫與 LINE 登入（`app/`，以模擬的 LINE／Supabase 回應跑過完整流程）
 - [x] 管理員後台接上資料庫
-- [ ] 實機測試（需先開啟 GitHub Pages）
-- [ ] 把管理員的帳號設為 `is_admin`（登入設定暱稱後，用 SQL 更新）
+- [x] 開啟 GitHub Pages
+- [x] 實機測試：LINE 登入、設定暱稱（2026-11-15，管理員本人）
+- [x] 管理員帳號設為 `is_admin`（暱稱「設計師愛麗絲」）
+- [ ] 實機測試：接龍、管理員後台
 - [ ] 每日匯出到 Google 試算表
 
 ## API 一覽（`POST /functions/v1/api`，body 帶 `action` 與 `idToken`）
