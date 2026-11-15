@@ -533,7 +533,7 @@ function openNickname(first){
   openModal(`<div class="sheet-head"><h2>${first?'歡迎來到出走社 👋':'修改暱稱'}</h2>${first?'':'<button class="close" data-close aria-label="關閉">×</button>'}
       ${first?'<div class="sub">第一次使用，請先設定你在 LINE 社群的暱稱</div>':''}</div>
     <div class="sec">
-      <label class="field"><span>社群暱稱 <em>（會公開顯示在接龍名單上，最多 12 個字）</em></span>
+      <label class="field"><span>社群暱稱 <em>（填入與「社群」相同的暱稱，確認身份使用）</em></span>
         <input class="input" id="nickInput" maxlength="12" value="${esc(state.me?.nickname||'')}" placeholder="例如：小美"></label>
       <div class="err" id="nickErr"></div>
       <div class="callout info">🔒<div>我們只會取得你的 LINE 名稱與識別碼，用來確認是你本人，不會公開；名單上只顯示暱稱。</div></div>
