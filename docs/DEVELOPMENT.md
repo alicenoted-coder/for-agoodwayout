@@ -23,27 +23,30 @@
 ```
 社員手機（LINE 內開啟）
   └─ 網頁（GitHub Pages，靜態檔）
-       ├─ 讀：活動、公開名單 ──────────→ Supabase（anon key，只讀得到公開資料）
-       └─ 寫：設定暱稱、接龍、取消 ───→ Supabase Edge Function
-                                         ├─ 用 LINE 驗證 ID token（確認是本人）
-                                         └─ 用 service role 寫入資料庫
+       └─ 所有讀寫 ───→ Supabase Edge Function `api`
+                          ├─ 用 LINE 驗證 ID token（確認是本人）
+                          ├─ 檢查審核狀態（待審核／停用的人拿不到任何資料）
+                          └─ 用 service role 讀寫資料庫
+資料庫對 anon / authenticated 完全不開放（2026-11-15 起）
 ```
 
 - **不需要 LINE Channel secret**：驗證 ID token 只要 Channel ID。
-- 網頁上會出現的 LIFF ID、Supabase URL、anon key 都是**公開值**，可以放在程式碼裡。
+- 網頁上會出現的 LIFF ID、Supabase URL、publishable key 都是**公開值**，可以放在程式碼裡；資料庫已不對它開放任何讀寫。
 - service role key 只存在 Supabase Edge Function 的環境設定，**絕對不放進 repo**。
 
 ## 資料表（`supabase/migrations/`）
 
 | 表 | 內容 | 公開？ |
 |---|---|---|
-| `members` | LINE 內部 ID、LINE 顯示名稱、社群暱稱、是否為管理員 | 只開放 `id`、`nickname` 兩欄（欄位權限＋RLS）；其他欄只有後端讀得到 |
-| `activities` | 類別、名稱、日期、地點、費用、名額、開班門檻 | 開放中的活動公開 |
-| `signups` | 哪個社員、哪場活動、接龍時間、取消時間 | 只讀得到有效接龍；公開名單用 `public_signups` 只露出暱稱 |
+| `members` | LINE 內部 ID、LINE 顯示名稱、社群暱稱、是否為管理員、審核狀態（`pending` / `approved` / `disabled`）、審核時間 | 否 |
+| `activities` | 類別、名稱、日期、地點、費用、名額、開班門檻 | 否（通過審核的成員經由 API 讀取） |
+| `signups` | 哪個社員、哪場活動、接龍時間、取消時間 | 否（API 只回傳暱稱） |
+
+- 新成員預設 `pending`；管理員在後台「人員清單」通過後才看得到活動。
 
 - `join_activity()`：鎖住活動那一列再檢查名額，避免兩人同時搶到最後一位。只有後端能呼叫。
 - 2026-11-15 已在本機 PostgreSQL 16 模擬 Supabase 預設權限測過：重複接龍、額滿、取消後遞補、訪客讀不到 LINE ID、訪客無法直接寫入，皆正確。
-- 已套用到 Supabase 專案；Supabase 安全檢查（Security Advisor）無警告。
+- 已套用到 Supabase 專案。Security Advisor 會提示「RLS 已開啟但沒有 policy」（INFO），這是刻意的：三張表都只讓後端讀寫。
 
 ## 服務與公開設定值
 
@@ -80,20 +83,28 @@
 - [x] 開啟 GitHub Pages
 - [x] 實機測試：LINE 登入、設定暱稱（2026-11-15，管理員本人）
 - [x] 管理員帳號設為 `is_admin`（暱稱「設計師愛麗絲」）
-- [ ] 實機測試：接龍、管理員後台
+- [x] 實機測試：接龍、管理員新增活動（2026-11-15）
 - [x] 成團時用官方帳號通知管理員（管理員需先加官方帳號好友）
 - [x] 實機測試：成團通知（2026-11-15，管理員收到官方帳號訊息）
+- [x] 人員審核：新成員待審核、管理員通過後才看得到內容；新成員申請時通知管理員
+- [x] 後台「人員清單」：審核／停用／恢復、設定管理員、匯出 CSV
+- [ ] 實機測試：人員審核、人員清單
+- [ ] 從 LINE 社群對話紀錄新增活動（提案中，見下方）
 - [ ] 每日匯出到 Google 試算表
 
 ## API 一覽（`POST /functions/v1/api`，body 帶 `action` 與 `idToken`）
 
 | action | 誰能用 | 說明 |
 |---|---|---|
-| `me` | 登入者 | 回傳暱稱、是否管理員、自己接龍的活動 |
-| `set_nickname` | 登入者 | 第一次建立社員資料或修改暱稱；重複回 `409 nickname_taken` |
-| `join` | 有暱稱者 | 呼叫 `join_activity()`，回 `ok` / `reached`（這位剛好讓活動成團）/ `full` / `already_joined` / `not_found`；`reached` 時用官方帳號通知所有管理員 |
+| `me` | 登入者 | 回傳暱稱、是否管理員、審核狀態、自己接龍的活動 |
+| `set_nickname` | 登入者 | 第一次建立社員資料（狀態 `pending`，並通知管理員）或修改暱稱；重複回 `409 nickname_taken` |
+| `data` | 通過審核者 | 近 180 天起的開放活動＋各活動的接龍暱稱 |
+| `join` | 通過審核者 | 呼叫 `join_activity()`，回 `ok` / `reached`（這位剛好讓活動成團）/ `full` / `already_joined` / `not_found`；`reached` 時用官方帳號通知所有管理員 |
 | `admin_save_activity` / `admin_delete_activity` | 管理員 | 新增、編輯、刪除活動 |
 | `admin_roster` / `admin_remove_signup` | 管理員 | 看名單（含 LINE 名稱）、移除接龍 |
+| `admin_members` / `admin_update_member` | 管理員 | 人員清單；改審核狀態、設定管理員（不能停用或取消自己） |
+
+未通過審核的人呼叫需要審核的 action 會收到 `403 pending` 或 `403 disabled`。
 
 ## 需要管理員本人處理的事
 

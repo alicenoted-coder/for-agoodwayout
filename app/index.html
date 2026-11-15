@@ -202,6 +202,17 @@
   .loading{position:fixed;inset:0;z-index:300;background:var(--bg);display:grid;place-content:center;justify-items:center;gap:8px;color:var(--muted)}
   .spinner{width:34px;height:34px;border-radius:50%;border:3px solid var(--line);border-top-color:var(--brand);animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
+  .gate{min-height:calc(100vh - 140px);display:grid;place-items:center;padding:32px 0}
+  .gate-card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow);padding:32px 24px;max-width:420px;width:100%;text-align:center}
+  .gate-card h1{font-size:22px;margin:10px 0 6px}
+  .gate-card p{color:var(--muted);margin:0 0 18px}
+  .gate-emoji{font-size:40px}
+  .gate-actions{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .admin-tabs{display:flex;gap:8px;margin:0 0 14px}
+  .count-badge{display:inline-grid;place-items:center;min-width:20px;height:20px;padding:0 6px;border-radius:999px;background:var(--danger);color:#fff;font-size:12px;font-weight:700}
+  .tab.on .count-badge{background:#fff;color:var(--danger)}
+  .badge.pending{background:var(--warn-soft);color:var(--warn)}
+  .badge.admin{background:#e9e4f5;color:#5b4a8f}
   .proto-note{font-size:12px;color:var(--muted);text-align:center;padding:0 0 28px}
   .proto-note button{border:0;background:none;color:var(--brand);text-decoration:underline;font-size:12px}
 </style>
@@ -220,6 +231,9 @@
   </div>
 </header>
 
+
+<!-- 審核中 / 停用 -->
+<main id="gateView" class="wrap gate hidden"></main>
 
 <!-- 2. 社員：活動總覽 -->
 <main id="memberView" class="wrap hidden">
@@ -261,8 +275,22 @@
   <section class="admin-head">
     <h1>管理員後台</h1>
     <button class="btn sm" id="newEvent">＋ 新增活動</button>
+    <button class="btn ghost sm hidden" id="exportCsv">⬇ 匯出試算表（CSV）</button>
   </section>
-  <div class="table-wrap">
+  <nav class="admin-tabs">
+    <button class="tab on" data-atab="events">活動</button>
+    <button class="tab" data-atab="members">人員清單 <span class="count-badge hidden" id="pendingBadge"></span></button>
+  </nav>
+  <section id="membersPanel" class="hidden">
+    <nav class="tabs" id="memberFilters" style="position:static;padding-top:0"></nav>
+    <div class="table-wrap">
+      <table>
+        <thead><tr><th>暱稱</th><th>LINE 名稱</th><th>狀態</th><th>加入日期</th><th>接龍中</th><th>操作</th></tr></thead>
+        <tbody id="memberRows"></tbody>
+      </table>
+    </div>
+  </section>
+  <div class="table-wrap" id="eventsPanel">
     <table>
       <thead><tr><th>日期</th><th>活動</th><th>類別</th><th>接龍 / 門檻 / 名額</th><th>狀態</th><th>操作</th></tr></thead>
       <tbody id="adminRows"></tbody>
@@ -297,8 +325,8 @@ const pad = (n)=>String(n).padStart(2,'0');
 const TODAY = new Date();
 const todayKey = `${TODAY.getFullYear()}-${pad(TODAY.getMonth()+1)}-${pad(TODAY.getDate())}`;
 
-let state = { events: [], me: null, mine: new Set(), idToken: null };
-let ui = { mode:'member', cat:'all', ym:[TODAY.getFullYear(), TODAY.getMonth()], day:null };
+let state = { events: [], me: null, mine: new Set(), idToken: null, members: [] };
+let ui = { mode:'member', cat:'all', ym:[TODAY.getFullYear(), TODAY.getMonth()], day:null, atab:'events', mfilter:'all' };
 let prefs = { hideHowto:false };
 try{ prefs = { ...prefs, ...JSON.parse(localStorage.getItem('gwo-prefs') || '{}') }; }catch(e){}
 function savePrefs(){ try{ localStorage.setItem('gwo-prefs', JSON.stringify(prefs)); }catch(e){} }
@@ -315,13 +343,7 @@ function av(nick){ return `<span class="av" style="background:${avColor(nick)}" 
 function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2800); }
 
 /* ---------- 連線 ---------- */
-// 讀公開資料（活動、暱稱名單）
-async function rest(path){
-  const r = await fetch(`${CONFIG.supabaseUrl}/rest/v1/${path}`, { headers:{ apikey: CONFIG.supabaseKey } });
-  if(!r.ok) throw new Error('rest_' + r.status);
-  return r.json();
-}
-// 需要身分的動作，一律經過後端 API（後端會向 LINE 確認是本人）
+// 所有讀寫都經過後端 API：後端會向 LINE 確認是本人，並檢查是否通過審核
 class ApiErr extends Error { constructor(code, status){ super(code); this.code=code; this.status=status; } }
 async function api(action, payload = {}){
   const r = await fetch(`${CONFIG.supabaseUrl}/functions/v1/api`, {
@@ -346,10 +368,7 @@ function relogin(){
 }
 
 async function loadData(){
-  const [acts, sus] = await Promise.all([
-    rest('activities?select=*&order=event_date.asc,created_at.asc'),
-    rest('public_signups?select=activity_id,nickname,created_at&order=created_at.asc'),
-  ]);
+  const { activities: acts, signups: sus } = await api('data');
   const by = {};
   sus.forEach(s=>{ (by[s.activity_id] ||= []).push({ nick:s.nickname }); });
   state.events = acts.map(a=>({
@@ -358,6 +377,11 @@ async function loadData(){
     capacity:a.capacity, threshold:a.threshold, desc:a.description||'',
     signups: by[a.id] || [],
   }));
+}
+const isApproved = ()=>state.me?.status === 'approved';
+async function loadMembers(){
+  const r = await api('admin_members');
+  state.members = r.members;
 }
 async function loadMe(){
   const r = await api('me');
@@ -383,8 +407,20 @@ function monthEvents(){
 
 /* ---------- 畫面 ---------- */
 function render(){
-  const admin = !!state.me?.is_admin;
+  const admin = !!state.me?.is_admin && isApproved();
   if(!admin) ui.mode = 'member';
+  const gated = !!state.me && !isApproved();
+  $('#gateView').classList.toggle('hidden', !gated);
+  if(gated){
+    $('#modeSwitch').classList.add('hidden');
+    $('#memberView').classList.add('hidden');
+    $('#adminView').classList.add('hidden');
+    renderGate();
+    const chip0 = $('#meChip');
+    chip0.classList.remove('hidden');
+    chip0.innerHTML = `${av(state.me.nickname)}<span>${esc(state.me.nickname)}</span>`;
+    return;
+  }
   $('#modeSwitch').classList.toggle('hidden', !admin);
   document.querySelectorAll('#modeSwitch button').forEach(b=>b.classList.toggle('on', b.dataset.mode===ui.mode));
   const chip = $('#meChip');
@@ -393,6 +429,16 @@ function render(){
   $('#memberView').classList.toggle('hidden', ui.mode!=='member');
   $('#adminView').classList.toggle('hidden', ui.mode!=='admin');
   if(ui.mode==='member') renderMember(); else renderAdmin();
+}
+
+function renderGate(){
+  const disabled = state.me.status === 'disabled';
+  $('#gateView').innerHTML = disabled ? `
+    <div class="gate-card"><div class="gate-emoji">🔒</div><h1>帳號已停用</h1>
+      <p>如果有疑問，請在 LINE 社群私訊管理員。</p></div>` : `
+    <div class="gate-card"><div class="gate-emoji">⏳</div><h1>審核中，請稍候</h1>
+      <p>管理員會對照 LINE 社群的成員，確認是「<b>${esc(state.me.nickname)}</b>」本人後開通。<br>通過後這個頁面會自動進入活動總覽。</p>
+      <div class="gate-actions"><button class="btn" data-recheck>重新檢查</button><button class="btn ghost" data-editnick>修改暱稱</button></div></div>`;
 }
 
 function progress(ev, i){
@@ -550,9 +596,9 @@ async function saveNick(btn){
     const r = await api('set_nickname', { nickname });
     const first = !state.me;
     state.me = r.member;
-    await loadData();
+    if(isApproved()) await loadData();
     closeModal(true); render();
-    toast(first ? `歡迎，${state.me.nickname}！` : '暱稱已更新');
+    toast(first ? (isApproved() ? `歡迎，${state.me.nickname}！` : '已送出，等待管理員審核') : '暱稱已更新');
   }catch(e){
     btn.disabled = false;
     err.textContent = e.code==='nickname_taken' ? '這個暱稱已經有人用了，換一個吧'
@@ -562,7 +608,57 @@ async function saveNick(btn){
 }
 
 /* ---------- 管理員後台 ---------- */
+const STATUS_LABEL = { pending:'待審核', approved:'已通過', disabled:'已停用' };
 function renderAdmin(){
+  const pending = state.members.filter(m=>m.status==='pending').length;
+  const badge = $('#pendingBadge');
+  badge.textContent = pending; badge.classList.toggle('hidden', !pending);
+  document.querySelectorAll('[data-atab]').forEach(b=>b.classList.toggle('on', b.dataset.atab===ui.atab));
+  const onMembers = ui.atab==='members';
+  $('#membersPanel').classList.toggle('hidden', !onMembers);
+  $('#eventsPanel').classList.toggle('hidden', onMembers);
+  $('#newEvent').classList.toggle('hidden', onMembers);
+  $('#exportCsv').classList.toggle('hidden', !onMembers);
+  if(onMembers) renderMembers(); else renderEvents();
+}
+
+function renderMembers(){
+  const ms = state.members;
+  const n = (st)=>ms.filter(m=>m.status===st).length;
+  const filters = [['all','全部',ms.length],['pending','待審核',n('pending')],['approved','已通過',n('approved')],['disabled','已停用',n('disabled')]];
+  $('#memberFilters').innerHTML = filters.map(([k,label,c])=>`<button class="tab ${ui.mfilter===k?'on':''}" data-mfilter="${k}">${label} <span class="n">${c}</span></button>`).join('');
+  const shown = ui.mfilter==='all' ? ms : ms.filter(m=>m.status===ui.mfilter);
+  const myNick = state.me?.nickname;
+  $('#memberRows').innerHTML = shown.length ? shown.map(m=>{
+    const self = m.nickname===myNick;
+    const cls = m.status==='approved' ? 'go' : m.status==='pending' ? 'pending' : 'closed';
+    let actions = '';
+    if(m.status==='pending') actions = `<button class="btn sm" data-mset="${m.id}|approved" data-who="${esc(m.nickname)}">通過</button><button class="btn danger sm" data-mset="${m.id}|disabled" data-who="${esc(m.nickname)}">拒絕</button>`;
+    else if(m.status==='disabled') actions = `<button class="btn ghost sm" data-mset="${m.id}|approved" data-who="${esc(m.nickname)}">恢復</button>`;
+    else if(!self) actions = `<button class="btn ghost sm" data-madmin="${m.id}|${m.is_admin?'0':'1'}" data-who="${esc(m.nickname)}">${m.is_admin?'取消管理員':'設為管理員'}</button><button class="btn danger sm" data-mset="${m.id}|disabled" data-who="${esc(m.nickname)}">停用</button>`;
+    return `<tr>
+      <td><div style="display:flex;align-items:center;gap:8px">${av(m.nickname)}<span class="t">${esc(m.nickname)}${self?'（你）':''}</span></div></td>
+      <td>${esc(m.line_name||'—')}</td>
+      <td><span class="badge ${cls}">${STATUS_LABEL[m.status]}</span>${m.is_admin?' <span class="badge admin">管理員</span>':''}</td>
+      <td>${fmtTime(m.created_at)}</td>
+      <td>${m.active_signups} 場</td>
+      <td><div class="actions">${actions}</div></td></tr>`;
+  }).join('') : `<tr><td colspan="6" class="sub" style="text-align:center;padding:30px">沒有符合的人</td></tr>`;
+}
+
+function exportCsv(){
+  const head = ['暱稱','LINE 名稱','狀態','管理員','加入時間','接龍中場數'];
+  const rows = state.members.map(m=>[m.nickname, m.line_name||'', STATUS_LABEL[m.status], m.is_admin?'是':'', new Date(m.created_at).toLocaleString('zh-TW'), m.active_signups]);
+  const csv = [head, ...rows].map(r=>r.map(v=>`"${String(v).replace(/"/g,'""')}"`).join(',')).join('\r\n');
+  const blob = new Blob(['\ufeff' + csv], { type:'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `agoodwayout_members_${todayKey}.csv`;   // 英文檔名：部分瀏覽器不支援中文下載檔名
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(a.href), 1000);
+}
+
+function renderEvents(){
   const rows = [...state.events].sort((a,b)=>a.date.localeCompare(b.date));
   $('#adminRows').innerHTML = rows.length ? rows.map(ev=>{
     const i=info(ev), c=CATS[ev.cat];
@@ -653,11 +749,33 @@ function closeModal(force){
 
 /* ---------- 事件 ---------- */
 document.addEventListener('click', async e=>{
-  const t = e.target.closest('[data-day],[data-dayclear],[data-mode],[data-cat],[data-open],[data-close],[data-overlay],[data-join],[data-roster],[data-rm],[data-edit],[data-save],[data-del],[data-editnick],[data-savenick]');
+  const t = e.target.closest('[data-atab],[data-mfilter],[data-mset],[data-madmin],[data-recheck],[data-day],[data-dayclear],[data-mode],[data-cat],[data-open],[data-close],[data-overlay],[data-join],[data-roster],[data-rm],[data-edit],[data-save],[data-del],[data-editnick],[data-savenick]');
   if(!t) return;
   const d = t.dataset;
   if(d.overlay!==undefined && e.target!==t) return;
-  if(d.mode){ ui.mode=d.mode; closeModal(); render(); window.scrollTo(0,0); }
+  if(d.mode){
+    ui.mode=d.mode; closeModal(); render(); window.scrollTo(0,0);
+    if(d.mode==='admin'){ try{ await loadMembers(); render(); }catch(err){} }
+  }
+  else if(d.atab){ ui.atab=d.atab; render(); if(d.atab==='members'){ try{ await loadMembers(); render(); }catch(err){} } }
+  else if(d.mfilter){ ui.mfilter=d.mfilter; renderMembers(); }
+  else if(d.mset || d.madmin){
+    const [mid, val] = (d.mset || d.madmin).split('|');
+    const msg = d.mset
+      ? (val==='approved' ? `通過「${d.who}」？通過後就能看到活動和接龍。` : val==='disabled' ? `停用「${d.who}」？停用後就看不到網站內容。` : '')
+      : (val==='1' ? `把「${d.who}」設為管理員？管理員可以新增活動、看所有人的 LINE 名稱。` : `取消「${d.who}」的管理員權限？`);
+    if(msg && !confirm(msg)) return;
+    t.disabled = true;
+    try{
+      await api('admin_update_member', d.mset ? { memberId:mid, status:val } : { memberId:mid, is_admin: val==='1' });
+      await loadMembers(); render(); toast('已更新');
+    }catch(err){ t.disabled = false; if(err.status!==401) toast('更新失敗：' + err.code); }
+  }
+  else if(d.recheck!==undefined){
+    t.disabled = true;
+    try{ await loadMe(); if(isApproved()){ await loadData(); toast('審核通過，歡迎！'); } else toast('還在審核中，請稍候'); render(); }
+    catch(err){ t.disabled = false; }
+  }
   else if(d.cat){ ui.cat=d.cat; renderMember(); }
   else if(d.day){ ui.day = ui.day===d.day ? null : d.day; renderMember(); }
   else if(d.dayclear!==undefined){ ui.day=null; renderMember(); }
@@ -689,11 +807,17 @@ $('#hideHowto').onclick = ()=>{ prefs.hideHowto=true; savePrefs(); renderMember(
 $('#prevM').onclick = ()=>{ let [y,m]=ui.ym; m--; if(m<0){m=11;y--;} ui.ym=[y,m]; ui.day=null; renderMember(); };
 $('#nextM').onclick = ()=>{ let [y,m]=ui.ym; m++; if(m>11){m=0;y++;} ui.ym=[y,m]; ui.day=null; renderMember(); };
 $('#newEvent').onclick = ()=>openEdit(null);
+$('#exportCsv').onclick = exportCsv;
 
 // 每 30 秒更新一次名單，讓大家看到最新人潮（有視窗開著或頁面在背景時跳過）
+// 審核中的人：每 30 秒檢查是否已通過，通過就自動進入
 setInterval(async ()=>{
-  if(document.hidden || $('#modalRoot').innerHTML || !state.idToken) return;
-  try{ await loadData(); render(); }catch(e){}
+  if(document.hidden || $('#modalRoot').innerHTML || !state.idToken || !state.me) return;
+  try{
+    if(isApproved()){ await loadData(); if(ui.mode==='admin' && ui.atab==='members') await loadMembers(); }
+    else if(state.me.status==='pending'){ await loadMe(); if(isApproved()){ await loadData(); toast('審核通過，歡迎！'); } }
+    render();
+  }catch(e){}
 }, 30000);
 
 /* ---------- 啟動：LINE 登入 → 讀資料 ---------- */
@@ -707,7 +831,8 @@ async function boot(){
   if(!liff.isLoggedIn()){ liff.login({ redirectUri: location.href }); return; }
   state.idToken = liff.getIDToken();
   try{
-    await Promise.all([loadData(), loadMe()]);
+    await loadMe();
+    if(isApproved()) await loadData();
   }catch(e){
     console.error(e);
     if(e.status===401) return;   // relogin() 會處理
