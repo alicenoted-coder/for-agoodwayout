@@ -1,0 +1,648 @@
+<!doctype html>
+<html lang="zh-Hant-TW">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>出走社活動接龍</title>
+<style>
+  :root{
+    --bg:#f6f8f7; --surface:#ffffff; --ink:#18364b; --ink-2:#29475b; --muted:#607789;
+    --line:#dfe7ea; --soft:#edf3f5;
+    --brand:#2f6f7e; --brand-ink:#ffffff; --accent:#b18c4d;
+    --c-host:#2f6f7e; --c-select:#a67c35; --c-member:#4f8250; --c-social:#c0634d;
+    --ok:#3d8a5a; --ok-soft:#e5f3ea; --warn:#b07a1f; --warn-soft:#fbf1df; --danger:#b5483a;
+    --radius:16px; --shadow:0 3px 14px rgba(23,50,77,.08);
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0}
+  body{background:var(--bg);color:var(--ink);font:15px/1.6 -apple-system,BlinkMacSystemFont,"PingFang TC","Noto Sans TC","Microsoft JhengHei",sans-serif;-webkit-font-smoothing:antialiased}
+  button,input,select,textarea{font:inherit;color:inherit}
+  button{cursor:pointer}
+  .wrap{max-width:1040px;margin:0 auto;padding:0 16px}
+  .hidden{display:none!important}
+
+  /* top bar */
+  .top{position:sticky;top:0;z-index:20;background:rgba(246,248,247,.92);backdrop-filter:blur(8px);border-bottom:1px solid var(--line)}
+  .top .wrap{display:flex;align-items:center;gap:12px;height:58px}
+  .logo{display:flex;align-items:center;gap:10px;font-weight:700;font-size:17px;letter-spacing:.02em}
+  .logo-mark{width:32px;height:32px;border-radius:10px;background:var(--ink);color:#fff;display:grid;place-items:center;font-size:15px}
+  .logo small{display:block;font-weight:500;font-size:11px;color:var(--muted);letter-spacing:.06em;line-height:1.1}
+  .spacer{flex:1}
+  .mode{display:flex;background:var(--soft);border-radius:999px;padding:3px}
+  .mode button{border:0;background:transparent;padding:5px 12px;border-radius:999px;font-size:13px;color:var(--muted)}
+  .mode button.on{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 4px rgba(0,0,0,.08)}
+
+  /* gate */
+  .gate{min-height:calc(100vh - 58px);display:grid;place-items:center;padding:32px 0}
+  .gate-card{background:var(--surface);border-radius:22px;box-shadow:var(--shadow);padding:32px 24px;max-width:400px;width:100%;text-align:center}
+  .gate-card h1{font-size:22px;margin:12px 0 6px}
+  .gate-card p{color:var(--muted);margin:0 0 20px}
+  .gate-emoji{font-size:40px}
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;border:0;border-radius:12px;padding:11px 18px;font-weight:600;background:var(--brand);color:var(--brand-ink);text-decoration:none;transition:filter .15s}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:disabled{opacity:.45;cursor:not-allowed;filter:none}
+  .btn.block{width:100%}
+  .btn.line{background:#06c755;color:#fff}
+  .btn.ghost{background:transparent;color:var(--ink-2);border:1.5px solid var(--line)}
+  .btn.gold{background:var(--accent)}
+  .btn.danger{background:transparent;color:var(--danger);border:1.5px solid #ecc9c3}
+  .btn.sm{padding:7px 12px;font-size:13px;border-radius:10px}
+  .or{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13px;margin:18px 0}
+  .or::before,.or::after{content:"";flex:1;height:1px;background:var(--line)}
+  .field{display:block;text-align:left;margin-bottom:14px}
+  .field > span{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:5px}
+  .field em{font-style:normal;color:var(--muted);font-weight:400}
+  .input{width:100%;border:1.5px solid var(--line);border-radius:12px;padding:10px 12px;background:#fff;outline:none}
+  .input:focus{border-color:var(--brand)}
+  .hint{font-size:12px;color:var(--muted);margin-top:10px}
+  .err{color:var(--danger);font-size:13px;min-height:20px;text-align:left}
+
+  /* hero */
+  .hero{padding:24px 0 8px;display:flex;flex-wrap:wrap;align-items:flex-end;gap:12px}
+  .hero h1{margin:0;font-size:26px;line-height:1.3}
+  .hero p{margin:4px 0 0;color:var(--muted)}
+  .month{display:flex;align-items:center;gap:6px;background:var(--surface);border-radius:12px;padding:4px;box-shadow:var(--shadow)}
+  .month button{border:0;background:transparent;width:32px;height:32px;border-radius:9px;font-size:16px;color:var(--ink-2)}
+  .month button:hover{background:var(--soft)}
+  .month b{min-width:96px;text-align:center}
+
+  .howto{margin:16px 0 4px;background:linear-gradient(120deg,#e8f2f4,#f8f0e5);border-radius:var(--radius);padding:14px 16px;position:relative}
+  .howto h3{margin:0 0 8px;font-size:15px}
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .step{background:rgba(255,255,255,.75);border-radius:12px;padding:10px;font-size:13px;line-height:1.45}
+  .step b{display:block;font-size:14px;margin-bottom:2px}
+  .step i{font-style:normal;display:inline-grid;place-items:center;width:20px;height:20px;border-radius:50%;background:var(--ink);color:#fff;font-size:12px;margin-right:4px}
+  .howto .x{position:absolute;top:8px;right:8px;border:0;background:transparent;color:var(--muted);font-size:18px;width:30px;height:30px;border-radius:8px}
+  @media (max-width:560px){.steps{grid-template-columns:1fr}}
+
+  .stats{display:flex;gap:10px;margin:16px 0 4px;overflow-x:auto;padding-bottom:2px}
+  .stat{flex:1;min-width:110px;background:var(--surface);border-radius:14px;padding:10px 14px;box-shadow:var(--shadow)}
+  .stat b{display:block;font-size:22px;line-height:1.2}
+  .stat span{font-size:12px;color:var(--muted)}
+
+  .tabs{display:flex;gap:8px;overflow-x:auto;padding:14px 0 6px;scrollbar-width:none;position:sticky;top:58px;background:var(--bg);z-index:5}
+  .tabs::-webkit-scrollbar{display:none}
+  .tab{flex:none;border:1.5px solid var(--line);background:var(--surface);border-radius:999px;padding:6px 14px;font-size:14px;color:var(--ink-2);display:flex;align-items:center;gap:6px}
+  .tab .dot{width:8px;height:8px;border-radius:50%}
+  .tab .n{font-size:12px;color:var(--muted)}
+  .tab.on{background:var(--ink);border-color:var(--ink);color:#fff}
+  .tab.on .n{color:#c9d6df}
+
+  .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(min(100%,300px),1fr));gap:14px;padding:10px 0 40px}
+  .card{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow:hidden;display:flex;flex-direction:column;cursor:pointer;border:0;text-align:left;padding:0;transition:transform .15s, box-shadow .15s}
+  .card:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(23,50,77,.12)}
+  .card-top{height:6px}
+  .card-body{padding:14px 16px 16px;display:flex;flex-direction:column;gap:10px;flex:1}
+  .meta-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .chip{font-size:12px;font-weight:600;padding:2px 9px;border-radius:999px;color:#fff;white-space:nowrap}
+  .date{font-size:13px;color:var(--muted)}
+  .card h3{margin:0;font-size:17px;line-height:1.4}
+  .sub{font-size:13px;color:var(--muted)}
+  .price{font-weight:700;color:var(--ink)}
+
+  .badge{font-size:12px;font-weight:700;padding:3px 9px;border-radius:8px;white-space:nowrap}
+  .badge.open{background:var(--soft);color:var(--brand)}
+  .badge.go{background:var(--ok-soft);color:var(--ok)}
+  .badge.full{background:var(--warn-soft);color:var(--warn)}
+  .badge.closed{background:#eee;color:#777}
+
+  /* progress */
+  .prog{position:relative;height:10px;background:var(--soft);border-radius:999px;overflow:visible;margin-top:2px}
+  .prog .fill{height:100%;border-radius:999px;background:var(--brand);transition:width .4s}
+  .prog .fill.go{background:var(--ok)}
+  .prog .th{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink);border-radius:2px}
+  .prog-label{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:4px}
+  .prog-label b{color:var(--ink)}
+
+  .faces{display:flex;align-items:center;margin-top:auto}
+  .av{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:12px;font-weight:700;border:2px solid #fff;margin-left:-7px;flex:none}
+  .faces .av:first-child{margin-left:0}
+  .faces .more{font-size:12px;color:var(--muted);margin-left:8px}
+  .empty{color:var(--muted);text-align:center;padding:40px 0}
+
+  /* sheet */
+  .overlay{position:fixed;inset:0;background:rgba(20,35,48,.45);z-index:50;display:flex;align-items:flex-end;justify-content:center;animation:fade .2s}
+  @media (min-width:720px){.overlay{align-items:center;padding:24px}}
+  .sheet{background:var(--bg);width:100%;max-width:640px;max-height:92vh;overflow-y:auto;border-radius:22px 22px 0 0;animation:up .25s ease-out}
+  @media (min-width:720px){.sheet{border-radius:22px}}
+  @keyframes up{from{transform:translateY(40px);opacity:.4}to{transform:none;opacity:1}}
+  @keyframes fade{from{opacity:0}to{opacity:1}}
+  .sheet-head{padding:18px 20px 16px;background:var(--surface);position:relative}
+  .sheet-head h2{margin:8px 0 6px;font-size:21px;line-height:1.35;padding-right:36px}
+  .close{position:absolute;top:12px;right:12px;width:34px;height:34px;border-radius:50%;border:0;background:var(--soft);font-size:18px;color:var(--ink-2)}
+  .info{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;font-size:14px;margin-top:8px}
+  .info dt{color:var(--muted)}
+  .info dd{margin:0}
+  .sec{background:var(--surface);margin-top:10px;padding:16px 20px}
+  .sec h4{margin:0 0 10px;font-size:15px;display:flex;align-items:center;gap:8px}
+  .sec h4 .count{font-size:13px;color:var(--muted);font-weight:500}
+  .desc{white-space:pre-line;color:var(--ink-2);font-size:14px}
+  .roster{list-style:none;margin:0;padding:0;display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+  .roster li{display:flex;align-items:center;gap:8px;background:var(--bg);border-radius:12px;padding:6px 10px 6px 6px;font-size:14px;animation:fade .3s}
+  .roster li .av{margin:0;border:0;width:26px;height:26px}
+  .roster li .no{font-size:11px;color:var(--muted);margin-left:auto}
+  .roster li.me{background:#e3f0f2;outline:1.5px solid var(--brand)}
+  .roster li.wait{background:var(--warn-soft)}
+  .roster li.slot{border:1.5px dashed var(--line);background:transparent;color:#a9b8c2;justify-content:center;padding:8px}
+  .callout{border-radius:14px;padding:12px 14px;font-size:14px;display:flex;gap:10px;align-items:flex-start}
+  .callout.go{background:var(--ok-soft);color:#24553a}
+  .callout.info{background:var(--soft);color:var(--ink-2)}
+  .callout.warn{background:var(--warn-soft);color:#6e4c12}
+  .callout b{display:block}
+  .check{display:flex;gap:8px;align-items:flex-start;font-size:13px;color:var(--ink-2);margin:4px 0 14px;text-align:left}
+  .check input{margin-top:4px}
+  .seg{display:flex;gap:6px;margin-bottom:8px}
+  .seg label{flex:1}
+  .seg input{position:absolute;opacity:0;pointer-events:none}
+  .seg span{display:block;text-align:center;border:1.5px solid var(--line);border-radius:10px;padding:7px;font-size:13px;background:#fff}
+  .seg input:checked + span{border-color:var(--brand);color:var(--brand);font-weight:700;background:#f0f7f8}
+  .seg input:focus-visible + span{outline:2px solid var(--brand)}
+  .sticky-cta{position:sticky;bottom:0;background:var(--surface);border-top:1px solid var(--line);padding:12px 20px calc(12px + env(safe-area-inset-bottom));display:flex;gap:10px;align-items:center}
+  .sticky-cta .left{flex:1;font-size:13px;color:var(--muted);line-height:1.4}
+  .sticky-cta .left b{color:var(--ink);font-size:15px}
+
+  /* admin */
+  .admin-head{display:flex;flex-wrap:wrap;gap:10px;align-items:center;padding:24px 0 12px}
+  .admin-head h1{margin:0;font-size:24px;flex:1;min-width:200px}
+  .table-wrap{background:var(--surface);border-radius:var(--radius);box-shadow:var(--shadow);overflow-x:auto;margin-bottom:40px}
+  table{width:100%;border-collapse:collapse;font-size:14px;min-width:720px}
+  th,td{padding:12px 14px;text-align:left;border-bottom:1px solid var(--line);vertical-align:middle}
+  th{font-size:12px;color:var(--muted);font-weight:600;background:#fafcfc}
+  tr:last-child td{border-bottom:0}
+  td .t{font-weight:600}
+  td .actions{display:flex;gap:6px;flex-wrap:wrap}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+  .form-grid .full{grid-column:1/-1}
+  @media (max-width:520px){.form-grid{grid-template-columns:1fr}}
+  .msg-preview{background:var(--bg);border-radius:12px;padding:12px 14px;white-space:pre-line;font-size:14px;border-left:4px solid #06c755}
+  .notified{font-size:12px;color:var(--ok);font-weight:600}
+  .contact-list{list-style:none;padding:0;margin:0;font-size:14px}
+  .contact-list li{display:flex;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);align-items:center}
+  .contact-list li:last-child{border-bottom:0}
+  .contact-list .c{color:var(--muted);font-size:13px;margin-left:auto;text-align:right}
+
+  .toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:var(--ink);color:#fff;padding:11px 18px;border-radius:12px;font-size:14px;z-index:100;box-shadow:0 8px 24px rgba(0,0,0,.2);max-width:calc(100% - 32px);animation:up .25s}
+  .proto-note{font-size:12px;color:var(--muted);text-align:center;padding:0 0 28px}
+  .proto-note button{border:0;background:none;color:var(--brand);text-decoration:underline;font-size:12px}
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <div class="logo"><div class="logo-mark">出</div><div>出走社<small>A GOOD WAY OUT</small></div></div>
+    <div class="spacer"></div>
+    <div class="mode" id="modeSwitch" role="tablist" aria-label="切換視角">
+      <button data-mode="member" class="on">社員</button>
+      <button data-mode="admin">管理員</button>
+    </div>
+  </div>
+</header>
+
+<!-- 1. 社群限定入口 -->
+<main id="gate" class="wrap gate hidden">
+  <div class="gate-card">
+    <div class="gate-emoji">🌿</div>
+    <h1>出走社活動接龍</h1>
+    <p>這裡是社群限定的活動頁<br>請從 LINE 社群進入，或輸入社群公告的通行碼</p>
+    <button class="btn line block" id="lineLogin">使用 LINE 登入（示意）</button>
+    <div class="or">或</div>
+    <label class="field"><span>本月通行碼</span>
+      <input class="input" id="passcode" placeholder="請輸入社群記事本裡的通行碼" autocomplete="off">
+    </label>
+    <div class="err" id="gateErr"></div>
+    <button class="btn block" id="passBtn">進入</button>
+    <div class="hint">示範通行碼：<b>GOODWAY</b>（入口方式尚未決定，這裡兩種都放）</div>
+  </div>
+</main>
+
+<!-- 2. 社員：活動總覽 -->
+<main id="memberView" class="wrap hidden">
+  <section class="hero">
+    <div style="flex:1;min-width:220px">
+      <h1>本月一起出走 ✦</h1>
+      <p>看看大家報了什麼，喜歡就 +1 接龍</p>
+    </div>
+    <div class="month">
+      <button id="prevM" aria-label="上個月">‹</button><b id="monthLabel"></b><button id="nextM" aria-label="下個月">›</button>
+    </div>
+  </section>
+
+  <section class="howto" id="howto">
+    <button class="x" id="hideHowto" aria-label="關閉說明">×</button>
+    <h3>第一次參加？三步驟就好 👋</h3>
+    <div class="steps">
+      <div class="step"><b><i>1</i>挑活動</b>看日期、價格，還有誰已經報名</div>
+      <div class="step"><b><i>2</i>+1 接龍</b>只要填暱稱，不用先付錢</div>
+      <div class="step"><b><i>3</i>成團通知</b>人數到了會通知你，再去藍星完成付款</div>
+    </div>
+  </section>
+
+  <section class="stats" id="stats"></section>
+  <nav class="tabs" id="tabs"></nav>
+  <section class="grid" id="grid"></section>
+</main>
+
+<!-- 3. 管理員後台 -->
+<main id="adminView" class="wrap hidden">
+  <section class="admin-head">
+    <h1>管理員後台</h1>
+    <button class="btn ghost sm" id="shareMonth">📋 複製本月接龍到 LINE 社群</button>
+    <button class="btn sm" id="newEvent">＋ 新增活動</button>
+  </section>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>日期</th><th>活動</th><th>類別</th><th>接龍 / 門檻 / 名額</th><th>狀態</th><th>操作</th></tr></thead>
+      <tbody id="adminRows"></tbody>
+    </table>
+  </div>
+</main>
+
+<p class="proto-note">Prototype 示範版・資料只存在這台裝置的瀏覽器 <button id="resetData">重設示範資料</button></p>
+
+<div id="modalRoot"></div>
+
+<script>
+/* ---------- 基本設定 ---------- */
+const CATS = {
+  host:   { name:'出走社主辦', color:'var(--c-host)' },
+  select: { name:'出走社嚴選', color:'var(--c-select)' },
+  member: { name:'社員自揪',   color:'var(--c-member)' },
+  social: { name:'社交活動',   color:'var(--c-social)' },
+};
+const AV_COLORS = ['#2f6f7e','#a67c35','#4f8250','#c0634d','#6a5d9e','#3f7fb0','#b4577e','#5a7a8c'];
+const WEEK = ['日','一','二','三','四','五','六'];
+const STORE_KEY = 'gwo-proto-v1';
+const TODAY = new Date(2026, 10, 4); // 原型以 2026/11/4 為「今天」
+
+const N = (s)=>s.split(' ').map((nick,i)=>({id:'seed'+i+nick, nick, contact:'', ts:i}));
+const SEED = [
+  { id:'e1', cat:'host', title:'秋冬香氛調香課｜木質調擴香石', host:'香氛老師 Yen', date:'2026-11-08', time:'14:00–16:30', place:'出走社社辦', price:1500, priceNote:'含材料', capacity:8, threshold:4, waitMax:2,
+    desc:'用雪松、檀香與一點橙花，調出屬於自己的秋冬氣味。\n課程會帶基礎香調概念，每人完成一顆擴香石 + 10ml 精油瓶帶回家。\n完全新手也可以。', payLink:'https://example.com/bluestar/aroma-1108', signups:N('小美 芋圓 Yuki 阿哲 茶茶 Ivy'), notified:true },
+  { id:'e2', cat:'host', title:'人類圖入門小聚', host:'人類圖講師 阿Ken', date:'2026-11-14', time:'19:30–21:30', place:'出走社社辦', price:900, priceNote:'無材料・可帶出生時間', capacity:8, threshold:5, waitMax:2,
+    desc:'第一次接觸人類圖？這場會從「類型」和「策略」開始，用輕鬆聊天的方式認識自己。\n請先準備好出生年月日與時間（越精準越好）。', payLink:'https://example.com/bluestar/hd-1114', signups:N('小樹 Mia 豆花'), notified:false },
+  { id:'e3', cat:'host', title:'編織課｜冬日圍巾起針班', host:'編織老師 Rita', date:'2026-11-22', time:'14:00–17:00', place:'出走社社辦', price:1800, priceNote:'含毛線、棒針', capacity:8, threshold:4, waitMax:2,
+    desc:'從起針、平針到收針，三小時帶你織出圍巾的第一段，回家就能繼續完成。\n毛線有四色可選，現場挑。', payLink:'https://example.com/bluestar/knit-1122', signups:N('葵 橘子 阿琳 布丁 小魚 Leo 小美 Yuki 阿凱'), notified:true },
+  { id:'e4', cat:'select', title:'旅行寫作講座：把出走寫成故事', host:'合作講者 林小路', date:'2026-11-21', time:'14:00–16:00', place:'合作場地・中山區', price:1200, priceNote:'含一杯飲品', capacity:20, threshold:10, waitMax:2,
+    desc:'出走社嚴選合作講座。\n講者分享十年旅行寫作經驗：怎麼記錄、怎麼選題、怎麼讓文字有畫面。\n最後半小時有小練習。', payLink:'https://example.com/bluestar/write-1121', signups:N('茶茶 豆花 小樹 阿琳 Ivy Leo 橘子'), notified:false },
+  { id:'e5', cat:'select', title:'植物染手帕工作坊', host:'合作工作室 染日', date:'2026-11-29', time:'13:30–16:30', place:'合作工作室・大稻埕', price:1600, priceNote:'含材料', capacity:12, threshold:6, waitMax:2,
+    desc:'用洋蔥皮與薯榔染出暖色系手帕，認識植物染的基本流程。\n會弄髒，請穿深色衣服。', payLink:'https://example.com/bluestar/dye-1129', signups:N('Mia 芋圓'), notified:false },
+  { id:'e6', cat:'member', title:'陽明山擎天崗輕健行', host:'社員 阿凱 揪', date:'2026-11-15', time:'09:00 集合', place:'捷運劍潭站 1 號出口', price:0, priceNote:'免費・交通自理', capacity:10, threshold:3, waitMax:2,
+    desc:'輕鬆路線，約 3 小時，中午在山上吃便當。\n天氣不好會在前一天晚上通知延期。', payLink:'', signups:N('阿凱 小魚 布丁 Yuki 葵'), notified:true },
+  { id:'e7', cat:'member', title:'週五電影夜：一起看《秋日》', host:'社員 茶茶 揪', date:'2026-11-20', time:'19:30', place:'信義區影城', price:0, priceNote:'票價自付', capacity:6, threshold:3, waitMax:0,
+    desc:'看完找間咖啡廳聊聊心得，想來就 +1，人數到了我統一訂位。', payLink:'', signups:N('茶茶'), notified:false },
+  { id:'e8', cat:'social', title:'十一月聚餐｜麻辣鍋之夜', host:'出走社', date:'2026-11-28', time:'18:30', place:'東區・某某麻辣鍋', price:680, priceNote:'含服務費 $50', capacity:12, threshold:6, waitMax:2,
+    desc:'月底一起吃鍋聊天！新朋友非常歡迎，第一次來不用擔心沒人認識。\n成團後統一訂位、收費。', payLink:'https://example.com/bluestar/hotpot-1128', signups:N('小美 阿哲 Ivy 芋圓 Leo 阿琳 葵 小樹 Mia'), notified:true },
+  { id:'e9', cat:'host', title:'聖誕香氛蠟燭課', host:'香氛老師 Yen', date:'2026-12-06', time:'14:00–16:30', place:'出走社社辦', price:1600, priceNote:'含材料', capacity:8, threshold:4, waitMax:2,
+    desc:'聖誕限定！做一顆肉桂柑橘香氛蠟燭，可以當交換禮物。', payLink:'https://example.com/bluestar/candle-1206', signups:N('Yuki'), notified:false },
+  { id:'e10', cat:'social', title:'年末交換禮物聚餐', host:'出走社', date:'2026-12-19', time:'18:30', place:'待定', price:800, priceNote:'含服務費 $50・禮物 $300 內', capacity:16, threshold:8, waitMax:2,
+    desc:'一年的最後一次聚餐，記得帶一份 $300 內的小禮物！', payLink:'', signups:[], notified:false },
+];
+
+/* ---------- 狀態與儲存 ---------- */
+let state = load();
+let ui = { mode:'member', cat:'all', ym:[2026,10] };
+
+function load(){
+  try{
+    const raw = localStorage.getItem(STORE_KEY);
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return { events: JSON.parse(JSON.stringify(SEED)), mine: [], entered:false, hideHowto:false, myNick:'' };
+}
+function save(){ try{ localStorage.setItem(STORE_KEY, JSON.stringify(state)); }catch(e){} }
+
+/* ---------- 工具 ---------- */
+const $ = (s)=>document.querySelector(s);
+const esc = (s)=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const money = (n)=> n ? '$'+n.toLocaleString('en-US') : '免費';
+function parseD(s){ const [y,m,d]=s.split('-').map(Number); return new Date(y,m-1,d); }
+function fmtDate(s){ const d=parseD(s); return `${d.getMonth()+1}/${d.getDate()}（${WEEK[d.getDay()]}）`; }
+function avColor(nick){ let h=0; for(const c of nick) h=(h*31+c.charCodeAt(0))>>>0; return AV_COLORS[h%AV_COLORS.length]; }
+function av(nick){ return `<span class="av" style="background:${avColor(nick)}" title="${esc(nick)}">${esc([...nick][0]||'?')}</span>`; }
+function toast(msg){ const t=document.createElement('div'); t.className='toast'; t.textContent=msg; document.body.appendChild(t); setTimeout(()=>t.remove(),2600); }
+async function copy(text){
+  try{ await navigator.clipboard.writeText(text); toast('已複製，可以貼到 LINE 社群了'); }
+  catch(e){ openModal(`<div class="sheet-head"><h2>複製以下文字</h2><button class="close" data-close>×</button></div><div class="sec"><textarea class="input" rows="10">${esc(text)}</textarea></div>`); }
+}
+
+function info(ev){
+  const n = ev.signups.length;
+  const main = ev.signups.slice(0, ev.capacity);
+  const wait = ev.signups.slice(ev.capacity, ev.capacity + ev.waitMax);
+  const reached = main.length >= ev.threshold;
+  let status, cls;
+  if(n >= ev.capacity + ev.waitMax){ status='額滿'; cls='closed'; }
+  else if(n >= ev.capacity){ status = ev.waitMax ? `額滿・可候補 ${ev.capacity+ev.waitMax-n} 位` : '額滿'; cls='full'; }
+  else if(reached){ status=`已成團・剩 ${ev.capacity-n} 位`; cls='go'; }
+  else { status=`接龍中・差 ${ev.threshold-n} 人成團`; cls='open'; }
+  return { n, main, wait, reached, status, cls, left: Math.max(0, ev.capacity-n),
+           canJoin: n < ev.capacity + ev.waitMax, isWait: n >= ev.capacity };
+}
+function monthEvents(){
+  const [y,m]=ui.ym;
+  return state.events.filter(e=>{ const d=parseD(e.date); return d.getFullYear()===y && d.getMonth()===m; })
+                     .sort((a,b)=>a.date.localeCompare(b.date));
+}
+function isMine(sid){ return state.mine.includes(sid); }
+function mySignup(ev){ return ev.signups.find(s=>isMine(s.id)); }
+
+/* ---------- 畫面切換 ---------- */
+function render(){
+  document.querySelectorAll('#modeSwitch button').forEach(b=>b.classList.toggle('on', b.dataset.mode===ui.mode));
+  const gated = ui.mode==='member' && !state.entered;
+  $('#gate').classList.toggle('hidden', !gated);
+  $('#memberView').classList.toggle('hidden', ui.mode!=='member' || gated);
+  $('#adminView').classList.toggle('hidden', ui.mode!=='admin');
+  if(ui.mode==='member' && !gated) renderMember();
+  if(ui.mode==='admin') renderAdmin();
+}
+
+function progress(ev, i){
+  const pct = Math.min(100, i.main.length/ev.capacity*100);
+  const th = ev.threshold/ev.capacity*100;
+  return `<div class="prog"><div class="fill ${i.reached?'go':''}" style="width:${pct}%"></div><div class="th" style="left:calc(${th}% - 1px)" title="開班門檻 ${ev.threshold} 人"></div></div>
+    <div class="prog-label"><span><b>${i.main.length}</b> / ${ev.capacity} 人${i.wait.length?`・候補 ${i.wait.length}`:''}</span><span>${ev.threshold} 人成團</span></div>`;
+}
+
+function renderMember(){
+  const [y,m]=ui.ym;
+  $('#monthLabel').textContent = `${y} 年 ${m+1} 月`;
+  $('#howto').classList.toggle('hidden', state.hideHowto);
+  const list = monthEvents();
+
+  const people = list.reduce((s,e)=>s+e.signups.length,0);
+  const go = list.filter(e=>info(e).reached).length;
+  const mine = list.filter(e=>mySignup(e)).length;
+  $('#stats').innerHTML = `
+    <div class="stat"><b>${list.length}</b><span>場活動</span></div>
+    <div class="stat"><b>${people}</b><span>人次已接龍</span></div>
+    <div class="stat"><b>${go}</b><span>場已成團</span></div>
+    <div class="stat"><b>${mine}</b><span>我參加的</span></div>`;
+
+  const counts = {all:list.length}; Object.keys(CATS).forEach(k=>counts[k]=list.filter(e=>e.cat===k).length);
+  $('#tabs').innerHTML = `<button class="tab ${ui.cat==='all'?'on':''}" data-cat="all">全部 <span class="n">${counts.all}</span></button>` +
+    Object.entries(CATS).map(([k,c])=>`<button class="tab ${ui.cat===k?'on':''}" data-cat="${k}"><span class="dot" style="background:${c.color}"></span>${c.name} <span class="n">${counts[k]}</span></button>`).join('');
+
+  const shown = list.filter(e=>ui.cat==='all'||e.cat===ui.cat);
+  $('#grid').innerHTML = shown.length ? shown.map(ev=>{
+    const i=info(ev), c=CATS[ev.cat], me=mySignup(ev);
+    const faces = ev.signups.slice(0,7).map(s=>av(s.nick)).join('');
+    const more = ev.signups.length>7 ? `+${ev.signups.length-7}` : '';
+    return `<button class="card" data-open="${ev.id}">
+      <div class="card-top" style="background:${c.color}"></div>
+      <div class="card-body">
+        <div class="meta-row"><span class="chip" style="background:${c.color}">${c.name}</span><span class="date">${fmtDate(ev.date)} ${esc(ev.time)}</span></div>
+        <h3>${esc(ev.title)}</h3>
+        <div class="meta-row"><span class="price">${money(ev.price)}</span><span class="sub">${esc(ev.priceNote)}</span><span class="spacer"></span><span class="badge ${i.cls}">${i.status}</span></div>
+        <div>${progress(ev,i)}</div>
+        <div class="faces">${faces || '<span class="sub">還沒有人報名，當第一個吧！</span>'}<span class="more">${more}${ev.signups.length?' 已接龍':''}</span>${me?'<span class="spacer"></span><span class="badge go">✓ 我已接龍</span>':''}</div>
+      </div></button>`;
+  }).join('') : `<div class="empty">這個月這一類還沒有活動 🍃</div>`;
+}
+
+/* ---------- 活動詳情（接龍） ---------- */
+function openDetail(id){
+  const ev = state.events.find(e=>e.id===id); if(!ev) return;
+  const i=info(ev), c=CATS[ev.cat], me=mySignup(ev);
+  const meIdx = me ? ev.signups.indexOf(me) : -1;
+  const meWait = me && meIdx >= ev.capacity;
+
+  const slots = Math.max(0, Math.min(ev.capacity - i.main.length, 12));
+  const roster = i.main.map((s,k)=>`<li class="${isMine(s.id)?'me':''}">${av(s.nick)}${esc(s.nick)}${isMine(s.id)?'（我）':''}<span class="no">${k+1}</span></li>`).join('')
+    + Array.from({length:slots},(_,k)=>`<li class="slot">${i.main.length+k+1}. 空位</li>`).join('');
+  const waitList = i.wait.map((s,k)=>`<li class="wait ${isMine(s.id)?'me':''}">${av(s.nick)}${esc(s.nick)}<span class="no">候補 ${k+1}</span></li>`).join('');
+
+  let callout = '';
+  if(me && !meWait && i.reached){
+    callout = `<div class="callout go">🎉<div><b>已成團！請完成正式報名</b>${ev.payLink ? `成團通知已寄出，請在活動 3 天前到藍星完成付款，名額才算保留。<div style="margin-top:10px"><a class="btn sm" href="${esc(ev.payLink)}" target="_blank" rel="noopener">前往藍星報名付款 ↗</a></div>` : '這是免費活動，揪團人會在 LINE 社群跟大家確認細節。'}</div></div>`;
+  } else if(me && meWait){
+    callout = `<div class="callout warn">⏳<div><b>你在候補第 ${meIdx-ev.capacity+1} 位</b>有人取消時會自動遞補，並通知你。</div></div>`;
+  } else if(me){
+    callout = `<div class="callout info">✓<div><b>你已接龍，還差 ${ev.threshold-i.main.length} 人成團</b>到門檻時會通知你，再去完成付款就好。可以先分享給朋友一起來！</div></div>`;
+  } else if(!i.reached){
+    callout = `<div class="callout info">💡<div><b>現在接龍不用付錢</b>滿 ${ev.threshold} 人才開班，成團後會通知你到藍星完成報名。</div></div>`;
+  }
+
+  const joinForm = (!me && i.canJoin) ? `
+    <div class="sec" id="joinSec">
+      <h4>${i.isWait?'加入候補':'+1 加入接龍'}</h4>
+      <label class="field"><span>暱稱 <em>（會公開顯示在名單上）</em></span>
+        <input class="input" id="jNick" maxlength="12" placeholder="例如：小美" value="${esc(state.myNick)}"></label>
+      <div class="field"><span>成團時怎麼通知你？</span>
+        <div class="seg">
+          <label><input type="radio" name="ch" value="line" checked><span>LINE 官方帳號</span></label>
+          <label><input type="radio" name="ch" value="email"><span>Email</span></label>
+        </div>
+        <input class="input hidden" id="jEmail" type="email" placeholder="you@example.com">
+      </div>
+      <label class="check"><input type="checkbox" id="jAgree">我了解：接龍不等於完成報名，成團後需在期限內到藍星付款才算保留名額。</label>
+      <div class="err" id="jErr"></div>
+    </div>` : '';
+
+  let cta;
+  if(me) cta = `<div class="left"><b>${meWait?'候補中':'已接龍'}</b><br>暱稱：${esc(me.nick)}</div><button class="btn danger" data-cancel="${ev.id}">取消接龍</button>`;
+  else if(i.canJoin) cta = `<div class="left"><b>${money(ev.price)}</b> ${esc(ev.priceNote)}<br>${i.isWait?`正取已滿・候補剩 ${ev.capacity+ev.waitMax-i.n} 位`:`剩 ${i.left} 個名額`}</div><button class="btn" data-join="${ev.id}">${i.isWait?'加入候補':'+1 接龍'}</button>`;
+  else cta = `<div class="left"><b>名額與候補都滿了</b><br>下次早點來 🙏</div><button class="btn" disabled>已額滿</button>`;
+
+  openModal(`
+    <div class="sheet-head">
+      <span class="chip" style="background:${c.color}">${c.name}</span>
+      <h2>${esc(ev.title)}</h2>
+      <button class="close" data-close aria-label="關閉">×</button>
+      <dl class="info">
+        <dt>日期</dt><dd>${fmtDate(ev.date)} ${esc(ev.time)}</dd>
+        <dt>地點</dt><dd>${esc(ev.place)}</dd>
+        <dt>費用</dt><dd><b>${money(ev.price)}</b>・${esc(ev.priceNote)}</dd>
+        <dt>帶領</dt><dd>${esc(ev.host)}</dd>
+      </dl>
+    </div>
+    <div class="sec">
+      <h4>接龍名單 <span class="count">${i.main.length} / ${ev.capacity}・${ev.threshold} 人成團</span><span class="spacer"></span><span class="badge ${i.cls}">${i.status}</span></h4>
+      ${progress(ev,i)}
+      <ul class="roster" style="margin-top:14px">${roster}</ul>
+      ${ev.waitMax ? `<h4 style="margin-top:16px">候補 <span class="count">${i.wait.length} / ${ev.waitMax}</span></h4>${waitList?`<ul class="roster">${waitList}</ul>`:'<div class="sub">目前沒有候補</div>'}` : ''}
+    </div>
+    ${callout ? `<div class="sec">${callout}</div>` : ''}
+    <div class="sec"><h4>活動介紹</h4><div class="desc">${esc(ev.desc)}</div>
+      <div style="margin-top:12px"><button class="btn ghost sm" data-share="${ev.id}">分享到 LINE 社群</button></div></div>
+    ${joinForm}
+    <div class="sticky-cta">${cta}</div>
+  `);
+
+  const em = $('#jEmail');
+  document.querySelectorAll('input[name=ch]').forEach(r=>r.addEventListener('change',()=>em.classList.toggle('hidden', r.value!=='email' || !r.checked)));
+}
+
+function join(id){
+  const ev = state.events.find(e=>e.id===id);
+  const nickEl = $('#jNick');
+  const nick = nickEl.value.trim();
+  const ch = document.querySelector('input[name=ch]:checked').value;
+  const email = $('#jEmail').value.trim();
+  const err = $('#jErr');
+  if(!nick){ err.textContent='請填暱稱'; $('#joinSec').scrollIntoView({behavior:'smooth'}); return; }
+  if(ch==='email' && !/^\S+@\S+\.\S+$/.test(email)){ err.textContent='請填正確的 Email'; return; }
+  if(!$('#jAgree').checked){ err.textContent='請勾選確認說明'; $('#joinSec').scrollIntoView({behavior:'smooth'}); return; }
+
+  const before = info(ev).reached;
+  const sid = 'u'+Date.now();
+  ev.signups.push({ id:sid, nick, contact: ch==='email'?email:'LINE 官方帳號', ts:Date.now() });
+  state.mine.push(sid); state.myNick = nick;
+  const after = info(ev);
+  save();
+  if(!before && after.reached){ ev.notified = true; save(); toast('🎉 你是成團的關鍵一票！已通知所有接龍的人'); }
+  else toast(ev.signups.length > ev.capacity ? '已加入候補' : '接龍成功！');
+  openDetail(id); render();
+}
+
+function cancel(id){
+  const ev = state.events.find(e=>e.id===id); const me = mySignup(ev); if(!me) return;
+  if(!confirm('確定要取消接龍嗎？如有候補會自動遞補。')) return;
+  const hadWait = info(ev).wait.length>0 && ev.signups.indexOf(me) < ev.capacity;
+  ev.signups = ev.signups.filter(s=>s!==me);
+  state.mine = state.mine.filter(x=>x!==me.id);
+  save();
+  toast(hadWait ? '已取消，候補第 1 位已遞補並收到通知' : '已取消接龍');
+  openDetail(id); render();
+}
+
+function shareText(ev){
+  const i=info(ev);
+  return `【出走社｜${CATS[ev.cat].name}】\n${ev.title}\n📅 ${fmtDate(ev.date)} ${ev.time}\n📍 ${ev.place}\n💰 ${money(ev.price)}（${ev.priceNote}）\n\n目前 ${i.main.length}/${ev.capacity} 人，${i.reached?'已成團！':`再 ${ev.threshold-i.main.length} 人就成團`}\n👉 到官網看名單、+1 接龍：https://agoodwayout.example/e/${ev.id}`;
+}
+
+/* ---------- 管理員後台 ---------- */
+function renderAdmin(){
+  const rows = [...state.events].sort((a,b)=>a.date.localeCompare(b.date));
+  $('#adminRows').innerHTML = rows.map(ev=>{
+    const i=info(ev), c=CATS[ev.cat];
+    return `<tr>
+      <td>${fmtDate(ev.date)}<div class="sub">${esc(ev.time)}</div></td>
+      <td><div class="t">${esc(ev.title)}</div><div class="sub">${money(ev.price)}・${esc(ev.host)}</div></td>
+      <td><span class="chip" style="background:${c.color}">${c.name}</span></td>
+      <td style="min-width:150px">${progress(ev,i)}</td>
+      <td><span class="badge ${i.cls}">${i.status}</span>${i.reached?`<div class="notified">${ev.notified?'✓ 已發成團通知':''}</div>`:''}</td>
+      <td><div class="actions">
+        <button class="btn ghost sm" data-roster="${ev.id}">名單</button>
+        <button class="btn sm ${i.reached?'gold':''}" data-notify="${ev.id}" ${i.reached?'':'disabled title="未達開班門檻"'}>${ev.notified?'再次通知':'發成團通知'}</button>
+        <button class="btn ghost sm" data-edit="${ev.id}">編輯</button>
+      </div></td></tr>`;
+  }).join('');
+}
+
+function openRoster(id){
+  const ev = state.events.find(e=>e.id===id); const i=info(ev);
+  const li = (s,label)=>`<li>${av(s.nick)}<span>${esc(s.nick)}</span><span class="badge ${label==='正取'?'go':'full'}">${label}</span><span class="c">${esc(s.contact||'LINE 官方帳號')}</span></li>`;
+  openModal(`<div class="sheet-head"><h2>${esc(ev.title)}・名單</h2><button class="close" data-close>×</button>
+    <div class="sub">正取 ${i.main.length}/${ev.capacity}・候補 ${i.wait.length}/${ev.waitMax}・門檻 ${ev.threshold}</div></div>
+    <div class="sec"><ul class="contact-list">${i.main.map(s=>li(s,'正取')).join('')}${i.wait.map(s=>li(s,'候補')).join('') || ''}</ul>
+    ${ev.signups.length?'':'<div class="sub">還沒有人接龍</div>'}</div>
+    <div class="sec"><button class="btn ghost sm" data-share="${ev.id}">複製接龍文字到 LINE 社群</button></div>`);
+}
+
+function openNotify(id){
+  const ev = state.events.find(e=>e.id===id); const i=info(ev);
+  const link = ev.payLink || '（免費活動，無付款連結）';
+  const msg = `【出走社】${ev.title} 成團囉 🎉\n\n${fmtDate(ev.date)} ${ev.time}・${ev.place}\n你接龍的活動已達 ${ev.threshold} 人開班門檻！\n\n請在活動 3 天前完成正式報名與付款：\n${link}\n\n不能參加了嗎？請回官網取消接龍，讓候補的朋友遞補 🙏`;
+  openModal(`<div class="sheet-head"><h2>發送成團通知</h2><button class="close" data-close>×</button>
+    <div class="sub">${esc(ev.title)}・將通知正取 ${i.main.length} 人</div></div>
+    <div class="sec">
+      <label class="field"><span>藍星報名連結 / 額外資料表單</span><input class="input" id="nLink" value="${esc(ev.payLink)}" placeholder="https://"></label>
+      <div class="field"><span>發送管道</span>
+        <div class="seg"><label><input type="checkbox" checked><span>LINE 官方帳號</span></label><label><input type="checkbox" checked><span>Email</span></label></div></div>
+      <div class="field"><span>訊息預覽</span><div class="msg-preview" id="nPrev">${esc(msg)}</div></div>
+    </div>
+    <div class="sticky-cta"><div class="left">實際發送管道待決定，這裡僅示意</div><button class="btn" data-send="${ev.id}">送出通知</button></div>`);
+  $('#nLink').addEventListener('input', e=>{ $('#nPrev').textContent = msg.replace(link, e.target.value || '（未填連結）'); });
+}
+
+function openEdit(id){
+  const ev = id ? state.events.find(e=>e.id===id) : { cat:'host', title:'', host:'', date:'2026-11-30', time:'14:00', place:'出走社社辦', price:1000, priceNote:'', capacity:8, threshold:4, waitMax:2, desc:'', payLink:'' };
+  const opt = Object.entries(CATS).map(([k,c])=>`<option value="${k}" ${ev.cat===k?'selected':''}>${c.name}</option>`).join('');
+  openModal(`<div class="sheet-head"><h2>${id?'編輯活動':'新增活動'}</h2><button class="close" data-close>×</button></div>
+    <form class="sec" id="evForm">
+      <div class="form-grid">
+        <label class="field"><span>類別</span><select class="input" name="cat">${opt}</select></label>
+        <label class="field"><span>帶領 / 揪團人</span><input class="input" name="host" value="${esc(ev.host)}" required></label>
+        <label class="field full"><span>活動名稱</span><input class="input" name="title" value="${esc(ev.title)}" required></label>
+        <label class="field"><span>日期</span><input class="input" type="date" name="date" value="${esc(ev.date)}" required></label>
+        <label class="field"><span>時間</span><input class="input" name="time" value="${esc(ev.time)}"></label>
+        <label class="field full"><span>地點</span><input class="input" name="place" value="${esc(ev.place)}"></label>
+        <label class="field"><span>價格（0 = 免費）</span><input class="input" type="number" min="0" step="50" name="price" value="${ev.price}"></label>
+        <label class="field"><span>價格說明</span><input class="input" name="priceNote" value="${esc(ev.priceNote)}" placeholder="含材料 / 含服務費"></label>
+        <label class="field"><span>名額上限</span><input class="input" type="number" min="1" name="capacity" value="${ev.capacity}"></label>
+        <label class="field"><span>開班門檻</span><input class="input" type="number" min="1" name="threshold" value="${ev.threshold}"></label>
+        <label class="field"><span>候補人數</span><input class="input" type="number" min="0" max="5" name="waitMax" value="${ev.waitMax}"></label>
+        <label class="field"><span>藍星報名連結</span><input class="input" name="payLink" value="${esc(ev.payLink)}" placeholder="https://"></label>
+        <label class="field full"><span>活動介紹</span><textarea class="input" rows="4" name="desc">${esc(ev.desc)}</textarea></label>
+      </div>
+      <div class="err" id="fErr"></div>
+    </form>
+    <div class="sticky-cta">${id?`<button class="btn danger" data-del="${id}">刪除</button>`:''}<div class="left"></div><button class="btn" data-save="${id||''}">儲存</button></div>`);
+}
+
+function saveEvent(id){
+  const f = new FormData($('#evForm')); const d = Object.fromEntries(f.entries());
+  ['price','capacity','threshold','waitMax'].forEach(k=>d[k]=Number(d[k])||0);
+  if(!d.title.trim() || !d.host.trim() || !d.date){ $('#fErr').textContent='請填寫名稱、帶領人與日期'; return; }
+  if(d.threshold > d.capacity){ $('#fErr').textContent='開班門檻不能大於名額上限'; return; }
+  if(id){ Object.assign(state.events.find(e=>e.id===id), d); }
+  else state.events.push({ ...d, id:'e'+Date.now(), signups:[], notified:false });
+  save(); closeModal(); render(); toast(id?'已更新活動':'已新增活動，社員頁面立即看得到');
+}
+
+function shareMonth(){
+  const [y,m]=ui.ym;
+  const list = state.events.filter(e=>{const d=parseD(e.date);return d.getFullYear()===y&&d.getMonth()===m;}).sort((a,b)=>a.date.localeCompare(b.date));
+  const lines = list.map(e=>{const i=info(e);return `・${fmtDate(e.date)} ${e.title}　${i.main.length}/${e.capacity}${i.reached?' ✅已成團':` 差${e.threshold-i.main.length}人`}`;});
+  copy(`📣 出走社 ${m+1} 月活動接龍\n\n${lines.join('\n')}\n\n👉 看誰報名、+1 接龍：https://agoodwayout.example\n（社群限定，通行碼請看記事本）`);
+}
+
+/* ---------- Modal ---------- */
+function openModal(html){
+  const root=$('#modalRoot');
+  const keepScroll = root.querySelector('.sheet')?.scrollTop;
+  root.innerHTML = `<div class="overlay" data-overlay><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  if(keepScroll) root.querySelector('.sheet').scrollTop = keepScroll;
+  document.body.style.overflow='hidden';
+}
+function closeModal(){ $('#modalRoot').innerHTML=''; document.body.style.overflow=''; }
+
+/* ---------- 事件 ---------- */
+document.addEventListener('click', e=>{
+  const t = e.target.closest('[data-mode],[data-cat],[data-open],[data-close],[data-overlay],[data-join],[data-cancel],[data-share],[data-roster],[data-notify],[data-send],[data-edit],[data-save],[data-del]');
+  if(!t) return;
+  const d = t.dataset;
+  if(d.overlay!==undefined && e.target!==t) return;
+  if(d.mode){ ui.mode=d.mode; closeModal(); render(); window.scrollTo(0,0); }
+  else if(d.cat){ ui.cat=d.cat; renderMember(); }
+  else if(d.open) openDetail(d.open);
+  else if(d.close!==undefined || d.overlay!==undefined) closeModal();
+  else if(d.join) join(d.join);
+  else if(d.cancel) cancel(d.cancel);
+  else if(d.share) copy(shareText(state.events.find(x=>x.id===d.share)));
+  else if(d.roster) openRoster(d.roster);
+  else if(d.notify) openNotify(d.notify);
+  else if(d.send){ const ev=state.events.find(x=>x.id===d.send); ev.payLink=$('#nLink').value.trim()||ev.payLink; ev.notified=true; save(); closeModal(); render(); toast(`已通知 ${info(ev).main.length} 位接龍者（示意）`); }
+  else if(d.edit) openEdit(d.edit);
+  else if(d.save!==undefined) saveEvent(d.save);
+  else if(d.del){ if(confirm('確定刪除這個活動？')){ state.events=state.events.filter(x=>x.id!==d.del); save(); closeModal(); render(); toast('已刪除'); } }
+});
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeModal(); });
+
+function enter(){ state.entered=true; save(); render(); }
+$('#lineLogin').onclick = enter;
+$('#passBtn').onclick = ()=>{ if($('#passcode').value.trim().toUpperCase()==='GOODWAY') enter(); else $('#gateErr').textContent='通行碼不對喔，請看 LINE 社群記事本'; };
+$('#passcode').addEventListener('keydown', e=>{ if(e.key==='Enter') $('#passBtn').click(); });
+$('#hideHowto').onclick = ()=>{ state.hideHowto=true; save(); renderMember(); };
+$('#prevM').onclick = ()=>{ let [y,m]=ui.ym; m--; if(m<0){m=11;y--;} ui.ym=[y,m]; renderMember(); };
+$('#nextM').onclick = ()=>{ let [y,m]=ui.ym; m++; if(m>11){m=0;y++;} ui.ym=[y,m]; renderMember(); };
+$('#newEvent').onclick = ()=>openEdit(null);
+$('#shareMonth').onclick = shareMonth;
+$('#resetData').onclick = ()=>{ try{localStorage.removeItem(STORE_KEY);}catch(e){} state=load(); ui.cat='all'; closeModal(); render(); toast('已重設示範資料'); };
+
+render();
+</script>
+</body>
+</html>
