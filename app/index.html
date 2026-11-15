@@ -518,7 +518,7 @@ async function join(id, btn){
     const { result } = await api('join', { activityId:id });
     await Promise.all([loadData(), loadMe()]);
     const ev = findEv(id);
-    if(result==='ok') toast(!before && ev && info(ev).reached ? '🎉 你是成團的關鍵一票！' : '接龍成功！');
+    if(result==='ok' || result==='reached') toast(result==='reached' || (!before && ev && info(ev).reached) ? '🎉 你是成團的關鍵一票！' : '接龍成功！');
     else if(result==='full') toast('差一點！名額剛好被接滿了');
     else if(result==='already_joined') toast('你已經在名單上了');
     else toast('這個活動已經不開放了');

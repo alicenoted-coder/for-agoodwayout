@@ -54,6 +54,7 @@
 | LINE Login channel（測試） | Provider `出走社測試`，Channel ID `2012620335`（開發中狀態，只有管理員／測試者能登入） |
 | LIFF app（測試） | LIFF ID `2012620335-Hk2HkkYY`，網址 `https://liff.line.me/2012620335-Hk2HkkYY`，Endpoint `https://alicenoted-coder.github.io/for-agoodwayout/app/` |
 | Edge Function | `api`（`verify_jwt` 關閉，改由函式自己向 LINE 驗證 ID token） |
+| 官方帳號（測試） | `出走社測試`，Messaging API 屬於 Provider `出走社測試`；金鑰存在 Supabase Edge Function Secrets 的 `LINE_MESSAGING_TOKEN`（不在 repo） |
 
 > 正式上線時：在**出走社官方帳號所屬的 Provider** 底下另建 LINE Login channel＋LIFF，替換 `app/index.html` 的 `CONFIG.liffId` 與 Edge Function 的 `LINE_CHANNEL_ID`，並清除測試資料。
 
@@ -80,6 +81,8 @@
 - [x] 實機測試：LINE 登入、設定暱稱（2026-11-15，管理員本人）
 - [x] 管理員帳號設為 `is_admin`（暱稱「設計師愛麗絲」）
 - [ ] 實機測試：接龍、管理員後台
+- [x] 成團時用官方帳號通知管理員（管理員需先加官方帳號好友）
+- [ ] 實機測試：成團通知
 - [ ] 每日匯出到 Google 試算表
 
 ## API 一覽（`POST /functions/v1/api`，body 帶 `action` 與 `idToken`）
@@ -88,7 +91,7 @@
 |---|---|---|
 | `me` | 登入者 | 回傳暱稱、是否管理員、自己接龍的活動 |
 | `set_nickname` | 登入者 | 第一次建立社員資料或修改暱稱；重複回 `409 nickname_taken` |
-| `join` | 有暱稱者 | 呼叫 `join_activity()`，回 `ok` / `full` / `already_joined` / `not_found` |
+| `join` | 有暱稱者 | 呼叫 `join_activity()`，回 `ok` / `reached`（這位剛好讓活動成團）/ `full` / `already_joined` / `not_found`；`reached` 時用官方帳號通知所有管理員 |
 | `admin_save_activity` / `admin_delete_activity` | 管理員 | 新增、編輯、刪除活動 |
 | `admin_roster` / `admin_remove_signup` | 管理員 | 看名單（含 LINE 名稱）、移除接龍 |
 

@@ -10,6 +10,10 @@ import { createClient } from "npm:@supabase/supabase-js@2.45.4";
 // LINE Login channel ID（公開值；LIFF ID 的前半段）
 const LINE_CHANNEL_ID = Deno.env.get("LINE_CHANNEL_ID") ?? "2012620335";
 
+// 官方帳號（Messaging API）的金鑰：存在 Supabase Edge Function Secrets，不放在程式碼裡
+const LINE_MESSAGING_TOKEN = Deno.env.get("LINE_MESSAGING_TOKEN") ?? "";
+const LIFF_URL = "https://liff.line.me/2012620335-Hk2HkkYY";
+
 // 允許呼叫這個 API 的網站
 const ALLOWED_ORIGINS = [
   "https://alicenoted-coder.github.io",
@@ -119,6 +123,49 @@ async function mySignupIds(memberId: string): Promise<string[]> {
   return data.map((r) => r.activity_id);
 }
 
+// 活動剛好成團時，用官方帳號通知所有管理員（管理員要先加官方帳號好友）。
+// 通知失敗不影響接龍本身，只記錄在 log。
+async function notifyAdminsReached(activityId: string) {
+  if (!LINE_MESSAGING_TOKEN) {
+    console.warn("LINE_MESSAGING_TOKEN not set; skip admin notification");
+    return;
+  }
+  try {
+    const { data: a } = await db
+      .from("activities")
+      .select("title, event_date, time_text, capacity, threshold")
+      .eq("id", activityId)
+      .single();
+    const { count } = await db
+      .from("signups")
+      .select("id", { count: "exact", head: true })
+      .eq("activity_id", activityId)
+      .is("cancelled_at", null);
+    const { data: admins } = await db.from("members").select("line_user_id").eq("is_admin", true);
+    if (!a || !admins?.length) return;
+
+    const d = new Date(a.event_date + "T00:00:00Z");
+    const week = "日一二三四五六"[d.getUTCDay()];
+    const when = `${d.getUTCMonth() + 1}/${d.getUTCDate()}（${week}）${a.time_text ? " " + a.time_text : ""}`;
+    const text =
+      `🎉【成團】${a.title}\n` +
+      `${when}・目前 ${count}／${a.capacity} 人（門檻 ${a.threshold} 人）\n` +
+      `記得到 LINE 社群公告付款方式\n${LIFF_URL}`;
+
+    const res = await fetch("https://api.line.me/v2/bot/message/multicast", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${LINE_MESSAGING_TOKEN}` },
+      body: JSON.stringify({
+        to: admins.map((m) => m.line_user_id),
+        messages: [{ type: "text", text }],
+      }),
+    });
+    if (!res.ok) console.error("LINE multicast failed", res.status, await res.text());
+  } catch (e) {
+    console.error("notifyAdminsReached error", e);
+  }
+}
+
 async function handle(body: Record<string, unknown>) {
   const line = await verifyLine(body.idToken);
   let member = await findMember(line.userId);
@@ -158,7 +205,8 @@ async function handle(body: Record<string, unknown>) {
         p_member: m.id,
       });
       if (error) throw error;
-      return { result: data }; // ok / full / already_joined / not_found
+      if (data === "reached") await notifyAdminsReached(String(body.activityId));
+      return { result: data }; // ok / reached / full / already_joined / not_found
     }
 
     // ---------- 管理員 ----------
