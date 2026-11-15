@@ -51,12 +51,18 @@
 |---|---|
 | Supabase 專案 | `agoodwayout`，URL `https://qceomzxgeqromtbdxinf.supabase.co`（組織 `alicenoted-job`，東京） |
 | GitHub Pages | 從 `claude/dazzling-bell-q1quxi` 分支根目錄發布：`https://alicenoted-coder.github.io/for-agoodwayout/` |
-| LINE Login channel / LIFF | 尚未建立 |
+| LINE Login channel（測試） | Provider `出走社測試`，Channel ID `2012620335`（開發中狀態，只有管理員／測試者能登入） |
+| LIFF app（測試） | LIFF ID `2012620335-Hk2HkkYY`，網址 `https://liff.line.me/2012620335-Hk2HkkYY`，Endpoint `https://alicenoted-coder.github.io/for-agoodwayout/app/` |
+| Edge Function | `api`（`verify_jwt` 關閉，改由函式自己向 LINE 驗證 ID token） |
+
+> 正式上線時：在**出走社官方帳號所屬的 Provider** 底下另建 LINE Login channel＋LIFF，替換 `app/index.html` 的 `CONFIG.liffId` 與 Edge Function 的 `LINE_CHANNEL_ID`，並清除測試資料。
 
 ## 目錄
 
 | 路徑 | 內容 |
 |---|---|
+| `app/index.html` | **正式網頁**：LINE 登入（LIFF）＋讀寫 Supabase。版面沿用 `prototype/stage1_v2.html` |
+| `supabase/functions/api/` | 後端 API：驗證 LINE 身分後處理暱稱、接龍、管理員操作 |
 | `prototype/` | 介面原型（純前端、資料存瀏覽器）。`stage1_v2.html` 是目前定稿的版面（左側日曆） |
 | `supabase/migrations/` | 資料表定義 |
 | `docs/` | 本文件 |
@@ -67,11 +73,23 @@
 - [x] 資料表設計與本機測試
 - [x] 建立 Supabase 專案 `agoodwayout`（東京，ref `qceomzxgeqromtbdxinf`）並套用資料表
 - [ ] 開啟 GitHub Pages
-- [ ] 建立 LINE Login channel＋LIFF app（需確認官方帳號所屬的 Provider）
-- [ ] Edge Function：驗證 LINE 身分、設定暱稱、接龍、取消
-- [ ] 把原型接上資料庫與 LINE 登入
-- [ ] 管理員後台接上資料庫
+- [x] 建立 LINE Login channel＋LIFF app（測試用 Provider）
+- [x] Edge Function：驗證 LINE 身分、設定暱稱、接龍、管理員（新增／編輯／刪除活動、看名單、移除接龍）
+- [x] 把原型接上資料庫與 LINE 登入（`app/`，以模擬的 LINE／Supabase 回應跑過完整流程）
+- [x] 管理員後台接上資料庫
+- [ ] 實機測試（需先開啟 GitHub Pages）
+- [ ] 把管理員的帳號設為 `is_admin`（登入設定暱稱後，用 SQL 更新）
 - [ ] 每日匯出到 Google 試算表
+
+## API 一覽（`POST /functions/v1/api`，body 帶 `action` 與 `idToken`）
+
+| action | 誰能用 | 說明 |
+|---|---|---|
+| `me` | 登入者 | 回傳暱稱、是否管理員、自己接龍的活動 |
+| `set_nickname` | 登入者 | 第一次建立社員資料或修改暱稱；重複回 `409 nickname_taken` |
+| `join` | 有暱稱者 | 呼叫 `join_activity()`，回 `ok` / `full` / `already_joined` / `not_found` |
+| `admin_save_activity` / `admin_delete_activity` | 管理員 | 新增、編輯、刪除活動 |
+| `admin_roster` / `admin_remove_signup` | 管理員 | 看名單（含 LINE 名稱）、移除接龍 |
 
 ## 需要管理員本人處理的事
 
